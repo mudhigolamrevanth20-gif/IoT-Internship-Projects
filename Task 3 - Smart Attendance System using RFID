@@ -1,0 +1,103 @@
+/*******************************************************
+ Project : Smart Attendance System using RFID
+ Author  : M. Revanth
+ Platform: ESP8266 NodeMCU + RC522 RFID
+*******************************************************/
+
+#include <ESP8266WiFi.h>
+#include <SPI.h>
+#include <MFRC522.h>
+
+// Wi-Fi Credentials
+const char* ssid = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+// RFID Pins
+#define SS_PIN D8      // GPIO15
+#define RST_PIN D3     // GPIO0
+
+MFRC522 rfid(SS_PIN, RST_PIN);
+
+void setup()
+{
+  Serial.begin(115200);
+
+  // Initialize SPI Bus
+  SPI.begin();
+
+  // Initialize RFID Reader
+  rfid.PCD_Init();
+
+  Serial.println();
+  Serial.println("==================================");
+  Serial.println(" RFID Attendance System");
+  Serial.println(" Scan your RFID Card...");
+  Serial.println("==================================");
+
+  // Connect Wi-Fi
+  WiFi.begin(ssid, password);
+
+  Serial.print("Connecting to WiFi");
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("WiFi Connected");
+  Serial.print("IP Address : ");
+  Serial.println(WiFi.localIP());
+}
+
+void loop()
+{
+  // Check for New Card
+  if (!rfid.PICC_IsNewCardPresent())
+    return;
+
+  // Read Card
+  if (!rfid.PICC_ReadCardSerial())
+    return;
+
+  Serial.println("-----------------------------");
+  Serial.print("Card UID : ");
+
+  String uid = "";
+
+  for (byte i = 0; i < rfid.uid.size; i++)
+  {
+    if (rfid.uid.uidByte[i] < 0x10)
+      Serial.print("0");
+
+    Serial.print(rfid.uid.uidByte[i], HEX);
+    Serial.print(" ");
+
+    uid += String(rfid.uid.uidByte[i], HEX);
+  }
+
+  Serial.println();
+  Serial.print("UID String : ");
+  Serial.println(uid);
+
+  // Sample Attendance Verification
+  if (uid == "a1b2c3d4")
+  {
+    Serial.println("Student : Revanth");
+    Serial.println("Attendance : PRESENT");
+  }
+  else
+  {
+    Serial.println("Unknown Card");
+    Serial.println("Attendance Denied");
+  }
+
+  Serial.println("-----------------------------");
+
+  // Stop Reading
+  rfid.PICC_HaltA();
+  rfid.PCD_StopCrypto1();
+
+  delay(2000);
+}
